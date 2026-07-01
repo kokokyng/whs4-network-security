@@ -49,6 +49,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header,
   if (ntohs(eth->ether_type) == 0x0800) { // 0x0800 is IP type
     struct ipheader * ip = (struct ipheader *)
                            (packet + sizeof(struct ethheader)); 
+    
+    // print src/dst MAC address    
     printf("Src MAC: ");
     for (int i = 0; i < 6; i++)
 	    printf("%02x%s", eth->ether_shost[i], i < 5 ? ":" : "\n");
@@ -60,16 +62,20 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header,
     printf("Src IP: %s\n", inet_ntoa(ip->iph_sourceip));   
     printf("Dst IP: %s\n", inet_ntoa(ip->iph_destip));    
 
-    /* determine protocol */
+    /* determine protocol(TCP only) */
     if (ip->iph_protocol == IPPROTO_TCP) {
 	    printf("Protocol: TCP\n");
 	   
 	    int ip_len = ip->iph_ihl * 4;
+
+	    // TCP header starts after Ethernet + IP header 
 	    struct tcpheader *tcp = (struct tcpheader *)(packet + sizeof(struct ethheader) + ip_len);
 	    printf("Src Port: %d\n", ntohs(tcp->tcp_sport));
 	    printf("Dst Port: %d\n", ntohs(tcp->tcp_dport));
 
 	    int tcp_len = TH_OFF(tcp) * 4;
+
+	    // HTTP message starts after Ethernet + IP + TCP headers
 	    u_char *message = (u_char *)(packet + sizeof(struct ethheader) + ip_len + tcp_len);
 	    int message_len = ntohs(ip->iph_len) - ip_len - tcp_len;
 	    if (message_len > 0) {
@@ -92,7 +98,7 @@ int main()
   char errbuf[PCAP_ERRBUF_SIZE];
   struct bpf_program fp;
   char filter_exp[] = "tcp";
-  bpf_u_int32 net;
+  bpf_u_int32 net = 0;
 
   // Step 1: Open live pcap session on NIC with name enp0s3
   handle = pcap_open_live("enp0s3", BUFSIZ, 1, 1000, errbuf);
