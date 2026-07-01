@@ -49,52 +49,39 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header,
   if (ntohs(eth->ether_type) == 0x0800) { // 0x0800 is IP type
     struct ipheader * ip = (struct ipheader *)
                            (packet + sizeof(struct ethheader)); 
+    printf("Src MAC: ");
+    for (int i = 0; i < 6; i++)
+	    printf("%02x%s", eth->ether_shost[i], i < 5 ? ":" : "\n");
 
-    printf("Src MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           eth->ether_shost[0], eth->ether_shost[1], eth->ether_shost[2],
-           eth->ether_shost[3], eth->ether_shost[4], eth->ether_shost[5]);
-    printf("Dst MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           eth->ether_dhost[0], eth->ether_dhost[1], eth->ether_dhost[2],
-           eth->ether_dhost[3], eth->ether_dhost[4], eth->ether_dhost[5]);
+    printf("Dst MAC: ");
+    for (int i = 0; i < 6; i++)
+	    printf("%02x%s", eth->ether_dhost[i], i < 5 ? ":" : "\n");
 
     printf("Src IP: %s\n", inet_ntoa(ip->iph_sourceip));   
     printf("Dst IP: %s\n", inet_ntoa(ip->iph_destip));    
 
     /* determine protocol */
-    switch(ip->iph_protocol) {                                 
-        case IPPROTO_TCP:
-            printf("Protocol: TCP\n");
-            
+    if (ip->iph_protocol == IPPROTO_TCP) {
+	    printf("Protocol: TCP\n");
+	   
 	    int ip_len = ip->iph_ihl * 4;
-   	    struct tcpheader *tcp = (struct tcpheader *)(packet + sizeof(struct ethheader) + ip_len);
-   	    printf("Src Port: %d\n", ntohs(tcp->tcp_sport));
-   	    printf("Dst Port: %d\n", ntohs(tcp->tcp_dport));
+	    struct tcpheader *tcp = (struct tcpheader *)(packet + sizeof(struct ethheader) + ip_len);
+	    printf("Src Port: %d\n", ntohs(tcp->tcp_sport));
+	    printf("Dst Port: %d\n", ntohs(tcp->tcp_dport));
 
 	    int tcp_len = TH_OFF(tcp) * 4;
-    	    u_char *message = (u_char *)(packet + sizeof(struct ethheader) + ip_len + tcp_len);
-   	    int message_len = ntohs(ip->iph_len) - ip_len - tcp_len;
-            if (message_len > 0) {
+	    u_char *message = (u_char *)(packet + sizeof(struct ethheader) + ip_len + tcp_len);
+	    int message_len = ntohs(ip->iph_len) - ip_len - tcp_len;
+	    if (message_len > 0) {
 		    printf("HTTP Message:\n\t");
 		    for (int i = 0; i < message_len; i++) {
 			    printf("%c", message[i]);
 			    if (message[i] == '\n' && i < message_len - 1)
 				    printf("\t");
-}
+		    }
 		    printf("\n");
 	    }
 	    printf("=================================================\n");
-
-	    return;
-
-        case IPPROTO_UDP:
-            printf("   Protocol: UDP\n");
-            return;
-        case IPPROTO_ICMP:
-            printf("   Protocol: ICMP\n");
-            return;
-        default:
-            printf("   Protocol: others\n");
-            return;
     }
   }
 }
